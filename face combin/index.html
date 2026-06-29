@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人臉組合遊戲</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .description {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+        
+        .game-area {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .face-container {
+            width: 400px;
+            height: 500px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            position: relative;
+            overflow: visible;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .face-part {
+            position: absolute;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            cursor: move;
+            transition: transform 0.2s ease;
+        }
+        
+        .face-part.dragging {
+            cursor: grabbing;
+            z-index: 100;
+        }
+        
+        .face-part.selected {
+            outline: 2px dashed #ffeb3b;
+            outline-offset: 2px;
+        }
+        
+        /* 確保額頭在最上層 */
+        .forehead {
+            top: 0;
+            height: 35%;
+            z-index: 30;
+        }
+        
+        .eyes-nose {
+            top: 30%;
+            height: 45%;
+            z-index: 20;
+        }
+        
+        .mouth-chin {
+            bottom: 0;
+            height: 35%;
+            z-index: 10;
+        }
+        
+        .face-part img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+            transition: transform 0.3s ease;
+        }
+        
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 300px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        button {
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 50px;
+            background: linear-gradient(to right, #ff7e5f, #feb47b);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result-message {
+            margin-top: 1.5rem;
+            font-size: 1.3rem;
+            font-weight: bold;
+            min-height: 2rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        
+        .reset-position {
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+        
+        .scale-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-top: 1rem;
+            width: 100%;
+        }
+        
+        .scale-control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 10px;
+        }
+        
+        .scale-label {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        
+        .scale-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .scale-btn {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+        }
+        
+        .instructions {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+            max-width: 400px;
+        }
+        
+        .current-selection {
+            margin-top: 1rem;
+            font-size: 1rem;
+            color: #ffeb3b;
+            min-height: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .game-area {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .right-panel {
+                width: 100%;
+                max-width: 400px;
+            }
+            
+            .face-container {
+                width: 300px;
+                height: 400px;
+            }
+            
+            .scale-control-group {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>人臉組合遊戲</h1>
+        <p class="description">按下開始按鈕，隨機組合額頭、眼睛鼻子、嘴巴下巴，創造獨一無二的新面孔！</p>
+        
+        <div class="game-area">
+            <div class="face-container" id="face-container">
+                <div class="face-part forehead" id="forehead-part">
+                    <img id="forehead-img" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDMwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjNGE5MGUyIi8+Cjx0ZXh0IHg9IjE1MCIgeT0iNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPuiPnOWHuzwvdGV4dD4KPC9zdmc+" alt="額頭">
+                </div>
+                <div class="face-part eyes-nose" id="eyes-nose-part">
+                    <img id="eyes-nose-img" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDMwMCAxNjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMTYwIiBmaWxsPSIjN2VkMzIxIi8+Cjx0ZXh0IHg9IjE1MCIgeT0iODAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPuihqOi/nOaUueiPnDwvdGV4dD4KPC9zdmc+" alt="眼睛鼻子">
+                </div>
+                <div class="face-part mouth-chin" id="mouth-chin-part">
+                    <img id="mouth-chin-img" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDMwMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMTIwIiBmaWxsPSIjZDAwMjFiIi8+Cjx0ZXh0IHg9IjE1MCIgeT0iNjAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiI116leHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPuWNl+WbnuWnkzwvdGV4dD4KPC9zdmc+" alt="嘴巴下巴">
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="current-selection" id="current-selection">
+                    點擊選擇要調整的部位
+                </div>
+                
+                <div class="scale-controls">
+                    <div class="scale-control-group">
+                        <div class="scale-label">額頭</div>
+                        <div class="scale-buttons">
+                            <button class="scale-btn" data-part="forehead" data-action="zoom-out">縮小</button>
+                            <button class="scale-btn" data-part="forehead" data-action="reset">重置</button>
+                            <button class="scale-btn" data-part="forehead" data-action="zoom-in">放大</button>
+                        </div>
+                    </div>
+                    
+                    <div class="scale-control-group">
+                        <div class="scale-label">眼睛鼻子</div>
+                        <div class="scale-buttons">
+                            <button class="scale-btn" data-part="eyesNose" data-action="zoom-out">縮小</button>
+                            <button class="scale-btn" data-part="eyesNose" data-action="reset">重置</button>
+                            <button class="scale-btn" data-part="eyesNose" data-action="zoom-in">放大</button>
+                        </div>
+                    </div>
+                    
+                    <div class="scale-control-group">
+                        <div class="scale-label">嘴巴下巴</div>
+                        <div class="scale-buttons">
+                            <button class="scale-btn" data-part="mouthChin" data-action="zoom-out">縮小</button>
+                            <button class="scale-btn" data-part="mouthChin" data-action="reset">重置</button>
+                            <button class="scale-btn" data-part="mouthChin" data-action="zoom-in">放大</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="reset-position" id="reset-position-btn">重置所有位置與大小</button>
+                
+                <div class="controls">
+                    <button id="start-btn">開始組合</button>
+                    <button id="stop-btn" disabled>停止組合</button>
+                </div>
+                
+                <div class="result-message" id="result-message">
+                    按下開始按鈕創造新面孔！
+                </div>
+                
+                <div class="instructions">
+                    提示：點擊選擇要調整的部位，然後使用縮放按鈕調整大小，或直接拖動調整位置
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 圖片資料庫 - 根據您的資料夾結構
+        const faceParts = {
+            forehead: [],
+            eyesNose: [],
+            mouthChin: []
+        };
+
+        // 初始化圖片路徑
+        function initImagePaths() {
+            // 額頭圖片路徑 (head資料夾)
+            for (let i = 1; i <= 28; i++) {
+                faceParts.forehead.push({
+                    id: i,
+                    src: `combind/head/${i}.jpg`
+                });
+            }
+            
+            // 眼睛鼻子圖片路徑 (eye資料夾)
+            for (let i = 1; i <= 28; i++) {
+                faceParts.eyesNose.push({
+                    id: i,
+                    src: `combind/eye/${i}.jpg`
+                });
+            }
+            
+            // 嘴巴下巴圖片路徑 (mouse資料夾)
+            for (let i = 1; i <= 28; i++) {
+                faceParts.mouthChin.push({
+                    id: i,
+                    src: `combind/mouse/${i}.jpg`
+                });
+            }
+        }
+
+        // DOM元素
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const resultMessage = document.getElementById('result-message');
+        const resetPositionBtn = document.getElementById('reset-position-btn');
+        const currentSelectionText = document.getElementById('current-selection');
+        const faceContainer = document.getElementById('face-container');
+        
+        // 臉部部位元素
+        const foreheadImg = document.getElementById('forehead-img');
+        const eyesNoseImg = document.getElementById('eyes-nose-img');
+        const mouthChinImg = document.getElementById('mouth-chin-img');
+        
+        // 臉部部位容器元素
+        const foreheadPart = document.getElementById('forehead-part');
+        const eyesNosePart = document.getElementById('eyes-nose-part');
+        const mouthChinPart = document.getElementById('mouth-chin-part');
+        
+        // 遊戲狀態
+        let isSpinning = false;
+        let spinInterval;
+        let currentSelection = {
+            forehead: 0,
+            eyesNose: 0,
+            mouthChin: 0
+        };
+        
+        // 拖動狀態
+        let isDragging = false;
+        let currentDraggingPart = null;
+        let dragOffset = { x: 0, y: 0 };
+        
+        // 縮放狀態
+        let scaleFactors = {
+            forehead: 1,
+            eyesNose: 1,
+            mouthChin: 1
+        };
+        
+        // 當前選中的部位
+        let selectedPart = null;
+        
+        // 初始化遊戲
+        function initGame() {
+            // 初始化圖片路徑
+            initImagePaths();
+            
+            // 設置初始圖片
+            updateFace();
+            
+            // 設置拖動事件
+            setupDragging();
+            
+            // 設置縮放按鈕事件
+            setupScaleButtons();
+            
+            // 事件監聽
+            startBtn.addEventListener('click', startSpinning);
+            stopBtn.addEventListener('click', stopSpinning);
+            resetPositionBtn.addEventListener('click', resetAll);
+            
+            // 初始選擇第一個部位
+            selectPart('forehead');
+        }
+        
+        // 設置拖動功能
+        function setupDragging() {
+            const parts = [foreheadPart, eyesNosePart, mouthChinPart];
+            
+            parts.forEach(part => {
+                // 鼠標按下事件
+                part.addEventListener('mousedown', (e) => {
+                    startDrag(e);
+                    // 點擊時選擇該部位
+                    const partId = part.id.replace('-part', '');
+                    selectPart(partId);
+                });
+                
+                // 觸摸設備支持
+                part.addEventListener('touchstart', (e) => {
+                    startDrag(e);
+                    // 點擊時選擇該部位
+                    const partId = part.id.replace('-part', '');
+                    selectPart(partId);
+                }, { passive: false });
+            });
+            
+            // 鼠標移動事件
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag, { passive: false });
+            
+            // 鼠標釋放事件
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+        }
+        
+        // 設置縮放按鈕事件
+        function setupScaleButtons() {
+            const scaleButtons = document.querySelectorAll('.scale-btn');
+            
+            scaleButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const part = button.dataset.part;
+                    const action = button.dataset.action;
+                    
+                    // 選擇對應的部位
+                    selectPart(part);
+                    
+                    // 執行對應的操作
+                    if (action === 'zoom-in') {
+                        zoomPart(part, 0.1);
+                    } else if (action === 'zoom-out') {
+                        zoomPart(part, -0.1);
+                    } else if (action === 'reset') {
+                        resetPartScale(part);
+                    }
+                });
+            });
+        }
+        
+        // 選擇部位
+        function selectPart(partId) {
+            // 移除所有部位的選中狀態
+            foreheadPart.classList.remove('selected');
+            eyesNosePart.classList.remove('selected');
+            mouthChinPart.classList.remove('selected');
+            
+            // 設置當前選中的部位
+            selectedPart = partId;
+            
+            // 添加選中狀態
+            if (partId === 'forehead') {
+                foreheadPart.classList.add('selected');
+                currentSelectionText.textContent = '當前選擇: 額頭';
+            } else if (partId === 'eyesNose') {
+                eyesNosePart.classList.add('selected');
+                currentSelectionText.textContent = '當前選擇: 眼睛鼻子';
+            } else if (partId === 'mouthChin') {
+                mouthChinPart.classList.add('selected');
+                currentSelectionText.textContent = '當前選擇: 嘴巴下巴';
+            }
+        }
+        
+        // 開始拖動
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+            currentDraggingPart = e.currentTarget;
+            currentDraggingPart.classList.add('dragging');
+            
+            // 計算偏移量
+            const rect = currentDraggingPart.getBoundingClientRect();
+            if (e.type === 'mousedown') {
+                dragOffset.x = e.clientX - rect.left;
+                dragOffset.y = e.clientY - rect.top;
+            } else if (e.type === 'touchstart') {
+                dragOffset.x = e.touches[0].clientX - rect.left;
+                dragOffset.y = e.touches[0].clientY - rect.top;
+            }
+        }
+        
+        // 拖動中
+        function drag(e) {
+            if (!isDragging || !currentDraggingPart) return;
+            
+            e.preventDefault();
+            
+            let clientX, clientY;
+            if (e.type === 'mousemove') {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            } else if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+            
+            // 計算新位置
+            const containerRect = faceContainer.getBoundingClientRect();
+            const newLeft = clientX - containerRect.left - dragOffset.x;
+            const newTop = clientY - containerRect.top - dragOffset.y;
+            
+            // 擴大移動範圍 - 允許元素移出容器
+            const maxLeft = containerRect.width + 100;
+            const maxTop = containerRect.height + 100;
+            
+            const boundedLeft = Math.max(-100, Math.min(maxLeft, newLeft));
+            const boundedTop = Math.max(-100, Math.min(maxTop, newTop));
+            
+            // 應用新位置
+            currentDraggingPart.style.left = `${boundedLeft}px`;
+            currentDraggingPart.style.top = `${boundedTop}px`;
+        }
+        
+        // 結束拖動
+        function endDrag() {
+            if (isDragging && currentDraggingPart) {
+                currentDraggingPart.classList.remove('dragging');
+            }
+            isDragging = false;
+            currentDraggingPart = null;
+        }
+        
+        // 重置所有位置和大小
+        function resetAll() {
+            // 重置位置
+            foreheadPart.style.left = '0px';
+            foreheadPart.style.top = '0px';
+            eyesNosePart.style.left = '0px';
+            eyesNosePart.style.top = '175px';
+            mouthChinPart.style.left = '0px';
+            mouthChinPart.style.top = '325px';
+            
+            // 重置縮放
+            scaleFactors = {
+                forehead: 1,
+                eyesNose: 1,
+                mouthChin: 1
+            };
+            
+            // 應用縮放重置
+            applyScale();
+            
+            // 重置選擇
+            selectPart('forehead');
+        }
+        
+        // 重置特定部位的縮放
+        function resetPartScale(part) {
+            scaleFactors[part] = 1;
+            applyScale();
+        }
+        
+        // 縮放特定部位
+        function zoomPart(part, delta) {
+            scaleFactors[part] = Math.max(0.5, Math.min(2, scaleFactors[part] + delta));
+            applyScale();
+        }
+        
+        // 應用縮放
+        function applyScale() {
+            foreheadImg.style.transform = `scale(${scaleFactors.forehead})`;
+            eyesNoseImg.style.transform = `scale(${scaleFactors.eyesNose})`;
+            mouthChinImg.style.transform = `scale(${scaleFactors.mouthChin})`;
+        }
+        
+        // 創建佔位圖片
+        function createPlaceholderImage(text, color) {
+            const svg = `<svg width="300" height="120" viewBox="0 0 300 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="300" height="120" fill="${color}"/>
+                <text x="150" y="60" font-family="Arial" font-size="14" fill="white" text-anchor="middle" dominant-baseline="middle">${text}</text>
+            </svg>`;
+            return 'data:image/svg+xml;base64,' + btoa(svg);
+        }
+        
+        // 開始旋轉
+        function startSpinning() {
+            if (isSpinning) return;
+            
+            isSpinning = true;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            resultMessage.textContent = "組合中...";
+            
+            // 隨機選擇臉部部位
+            spinInterval = setInterval(() => {
+                currentSelection.forehead = Math.floor(Math.random() * faceParts.forehead.length);
+                currentSelection.eyesNose = Math.floor(Math.random() * faceParts.eyesNose.length);
+                currentSelection.mouthChin = Math.floor(Math.random() * faceParts.mouthChin.length);
+                
+                // 更新臉部圖片
+                updateFace();
+            }, 100); // 每100ms更新一次
+        }
+        
+        // 停止旋轉
+        function stopSpinning() {
+            if (!isSpinning) return;
+            
+            clearInterval(spinInterval);
+            isSpinning = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            
+            // 顯示結果訊息
+            resultMessage.textContent = "新面孔創造成功！";
+        }
+        
+        // 更新臉部圖片
+        function updateFace() {
+            // 設置圖片並添加錯誤處理
+            foreheadImg.src = faceParts.forehead[currentSelection.forehead].src;
+            foreheadImg.onerror = function() {
+                this.src = createPlaceholderImage('額頭', '#4a90e2');
+            };
+            
+            eyesNoseImg.src = faceParts.eyesNose[currentSelection.eyesNose].src;
+            eyesNoseImg.onerror = function() {
+                this.src = createPlaceholderImage('眼睛鼻子', '#7ed321');
+            };
+            
+            mouthChinImg.src = faceParts.mouthChin[currentSelection.mouthChin].src;
+            mouthChinImg.onerror = function() {
+                this.src = createPlaceholderImage('嘴巴下巴', '#d0021b');
+            };
+        }
+        
+        // 初始化遊戲
+        window.onload = initGame;
+    </script>
+</body>
+</html>
